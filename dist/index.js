@@ -36,6 +36,7 @@ var Dropdown = function (_Component) {
 
     var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(Dropdown).call(this, props));
 
+    _this._uid = 0;
     _this.state = {
       selected: props.value || {
         label: props.placeholder || 'Select...',
@@ -43,6 +44,24 @@ var Dropdown = function (_Component) {
       },
       isOpen: false
     };
+
+    _this.state.options = props.options.map(function (option) {
+      if (!option) {
+        throw new Error("Empty options aren't allowed");
+      }
+
+      if (typeof option === 'string') {
+        return {
+          label: option,
+          value: _this._uid++
+        };
+      } else if (!option.value) {
+        option.value = _this._uid++;
+      }
+
+      return option;
+    });
+
     _this.mounted = true;
     _this.handleDocumentClick = _this.handleDocumentClick.bind(_this);
     _this.fireChangeEvent = _this.fireChangeEvent.bind(_this);
@@ -53,34 +72,57 @@ var Dropdown = function (_Component) {
     key: 'componentWillReceiveProps',
     value: function componentWillReceiveProps(newProps) {
       if (newProps.value && newProps.value !== this.state.selected) {
-        this.setState({ selected: newProps.value });
+        this.setState({
+          selected: newProps.value
+        });
       } else if (!newProps.value && newProps.placeholder) {
-        this.setState({ selected: { label: newProps.placeholder, value: '' } });
+        this.setState({
+          selected: {
+            label: newProps.placeholder,
+            value: ''
+          }
+        });
       }
     }
   }, {
-    key: 'componentDidMount',
-    value: function componentDidMount() {
-      document.addEventListener('click', this.handleDocumentClick, false);
-      document.addEventListener('touchend', this.handleDocumentClick, false);
+    key: 'listenGlobal',
+    value: function listenGlobal() {
+      document.addEventListener('mousedown', this.handleDocumentClick, true);
+      document.addEventListener('touchstart', this.handleDocumentClick, true);
+    }
+  }, {
+    key: 'unlistenGlobal',
+    value: function unlistenGlobal() {
+      document.removeEventListener('mousedown', this.handleDocumentClick, true);
+      document.removeEventListener('touchstart', this.handleDocumentClick, true);
     }
   }, {
     key: 'componentWillUnmount',
     value: function componentWillUnmount() {
       this.mounted = false;
-      document.removeEventListener('click', this.handleDocumentClick, false);
-      document.removeEventListener('touchend', this.handleDocumentClick, false);
+      this.unlistenGlobal();
     }
   }, {
-    key: 'handleMouseDown',
-    value: function handleMouseDown(event) {
-      if (event.type === 'mousedown' && event.button !== 0) return;
-      event.stopPropagation();
+    key: 'handleClick',
+    value: function handleClick(event) {
+      // event.stopPropagation();
       event.preventDefault();
 
-      this.setState({
-        isOpen: !this.state.isOpen
-      });
+      var isOpen = !this.state.isOpen;
+
+      if (isOpen) {
+        this.listenGlobal();
+      } else {
+        this.unlistenGlobal();
+      }
+
+      this.setState({ isOpen: isOpen });
+    }
+  }, {
+    key: 'close',
+    value: function close() {
+      this.unlistenGlobal();
+      this.setState({ isOpen: false });
     }
   }, {
     key: 'setValue',
@@ -92,6 +134,8 @@ var Dropdown = function (_Component) {
         },
         isOpen: false
       };
+
+      this.unlistenGlobal();
       this.fireChangeEvent(newState);
       this.setState(newState);
     }
@@ -103,23 +147,41 @@ var Dropdown = function (_Component) {
       }
     }
   }, {
+    key: 'getValue',
+    value: function getValue(option) {
+      return option.value || option.label || option;
+    }
+  }, {
+    key: 'getLabel',
+    value: function getLabel(option) {
+      return option.label || option.value || option;
+    }
+  }, {
     key: 'renderOption',
     value: function renderOption(option) {
       var _classNames;
 
-      var optionClass = (0, _classnames2.default)((_classNames = {}, _defineProperty(_classNames, this.props.baseClassName + '-option', true), _defineProperty(_classNames, 'is-selected', option === this.state.selected), _classNames));
+      var value = this.getValue(option);
+      var label = this.getLabel(option);
 
-      var value = option.value || option.label || option;
-      var label = option.label || option.value || option;
+      var optionClass = (0, _classnames2.default)((_classNames = {}, _defineProperty(_classNames, this.props.baseClassName + '-option', true), _defineProperty(_classNames, 'is-selected', value === this.getValue(this.state.selected)), _classNames));
 
       return _react2.default.createElement(
         'div',
         {
           key: value,
-          className: optionClass,
-          onMouseDown: this.setValue.bind(this, value, label),
-          onClick: this.setValue.bind(this, value, label) },
-        label
+          className: optionClass
+          // onMouseDown={this.setValue.bind(this, value, label)}
+          , onClick: this.setValue.bind(this, value, label)
+        },
+        _react2.default.createElement(
+          'span',
+          { style: {
+              paddingLeft: (option.indent | 0) * 10 + 'px'
+            } },
+          '* ',
+          label
+        )
       );
     }
   }, {
@@ -127,9 +189,9 @@ var Dropdown = function (_Component) {
     value: function buildMenu() {
       var _this2 = this;
 
-      var _props = this.props;
-      var options = _props.options;
-      var baseClassName = _props.baseClassName;
+      var baseClassName = this.props.baseClassName;
+      var options = this.state.options;
+
 
       var ops = options.map(function (option) {
         if (option.type === 'group') {
@@ -161,10 +223,12 @@ var Dropdown = function (_Component) {
     }
   }, {
     key: 'handleDocumentClick',
-    value: function handleDocumentClick(event) {
+    value: function handleDocumentClick(e) {
       if (this.mounted) {
-        if (!_reactDom2.default.findDOMNode(this).contains(event.target)) {
-          this.setState({ isOpen: false });
+        var elem = _reactDom2.default.findDOMNode(this);
+
+        if (elem !== e.target && !elem.contains(e.target)) {
+          this.close();
         }
       }
     }
@@ -173,9 +237,13 @@ var Dropdown = function (_Component) {
     value: function render() {
       var _classNames2;
 
-      var baseClassName = this.props.baseClassName;
+      var _props = this.props;
+      var baseClassName = _props.baseClassName;
+      var menuTop = _props.menuTop;
 
       var placeHolderValue = typeof this.state.selected === 'string' ? this.state.selected : this.state.selected.label;
+
+      var menuClass = baseClassName + '-menu' + (menuTop ? ' ' + baseClassName + '-menu-top' : '');
       var value = _react2.default.createElement(
         'div',
         { className: baseClassName + '-placeholder' },
@@ -183,7 +251,7 @@ var Dropdown = function (_Component) {
       );
       var menu = this.state.isOpen ? _react2.default.createElement(
         'div',
-        { className: baseClassName + '-menu' },
+        { className: menuClass },
         this.buildMenu()
       ) : null;
 
@@ -194,7 +262,7 @@ var Dropdown = function (_Component) {
         { className: dropdownClass },
         _react2.default.createElement(
           'div',
-          { className: baseClassName + '-control', onMouseDown: this.handleMouseDown.bind(this), onTouchEnd: this.handleMouseDown.bind(this) },
+          { className: baseClassName + '-control', onClick: this.handleClick.bind(this) },
           value,
           _react2.default.createElement('span', { className: baseClassName + '-arrow' })
         ),

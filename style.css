@@ -54,6 +54,14 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.Dropdown-menu-top {
+  top: auto;
+  margin-top: 0;
+
+  margin-bottom: -1;
+  bottom: 100%;
+}
+
 .Dropdown-menu .Dropdown-group > .Dropdown-title{
   padding: 8px 10px;
   color: rgba(51, 51, 51, 1);
