@@ -177,9 +177,8 @@ var Dropdown = function (_Component) {
         _react2.default.createElement(
           'span',
           { style: {
-              paddingLeft: (option.indent | 0) * 10 + 'px'
+              paddingLeft: (option.indent | 0) * 14 + 'px'
             } },
-          '* ',
           label
         )
       );

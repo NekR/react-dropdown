@@ -134,7 +134,7 @@ class Dropdown extends Component {
         onClick={this.setValue.bind(this, value, label)}
       >
         <span style={{
-          paddingLeft: (option.indent | 0) * 10 + 'px'
+          paddingLeft: (option.indent | 0) * 14 + 'px'
         }}>{ label }</span>
       </div>
     )
